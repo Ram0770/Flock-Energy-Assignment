@@ -1,0 +1,43 @@
+services:
+  # 1. Mock Legacy Portal (Simulated Source)
+  - type: web
+    name: flock-mock-portal
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn mock_portal:app --host 0.0.0.0 --port $PORT
+    rootDir: backend
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.0
+
+  # 2. Wrapper REST API
+  - type: web
+    name: flock-backend-wrapper
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    rootDir: backend
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.0
+      - key: PORTAL_URL
+        fromService:
+          name: flock-mock-portal
+          type: web
+          property: host
+      - key: REDIS_URL
+        value: "" # Will fallback gracefully to in-memory caching if left empty
+
+  # 3. Next.js Frontend
+  - type: web
+    name: flock-frontend
+    env: node
+    buildCommand: npm install && npm run build
+    startCommand: npm run start
+    rootDir: frontend
+    envVars:
+      - key: NEXT_PUBLIC_API_URL
+        fromService:
+          name: flock-backend-wrapper
+          type: web
+          property: url
