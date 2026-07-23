@@ -27,17 +27,3 @@ services:
           property: host
       - key: REDIS_URL
         value: "" # Will fallback gracefully to in-memory caching if left empty
-
-  # 3. Next.js Frontend
-  - type: web
-    name: flock-frontend
-    env: node
-    buildCommand: npm install && npm run build
-    startCommand: npm run start
-    rootDir: frontend
-    envVars:
-      - key: NEXT_PUBLIC_API_URL
-        fromService:
-          name: flock-backend-wrapper
-          type: web
-          property: url
