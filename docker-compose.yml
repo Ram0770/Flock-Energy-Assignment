@@ -1,0 +1,50 @@
+version: '3.8'
+
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: flock_redis
+    ports:
+      - "6379:6379"
+    restart: always
+
+  mock-portal:
+    build:
+      context: ./backend
+      dockerfile: ../docker/Dockerfile.backend
+    container_name: flock_mock_portal
+    command: uvicorn mock_portal:app --host 0.0.0.0 --port 8001
+    ports:
+      - "8001:8001"
+    restart: always
+
+  backend-wrapper:
+    build:
+      context: ./backend
+      dockerfile: ../docker/Dockerfile.backend
+    container_name: flock_backend_wrapper
+    ports:
+      - "8000:8000"
+    environment:
+      - PORTAL_URL=http://mock-portal:8001
+      - REDIS_URL=redis://redis:6379
+      - CACHE_EXPIRY_SECONDS=300
+      - TIMEOUT_SECONDS=10.0
+      - RETRY_ATTEMPTS=3
+    depends_on:
+      - redis
+      - mock-portal
+    restart: always
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: ../docker/Dockerfile.frontend
+    container_name: flock_frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
+    depends_on:
+      - backend-wrapper
+    restart: always
